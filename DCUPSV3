@@ -1,0 +1,91 @@
+/*
+ * Name      - Battery Monitor
+ * Author    - Gary van den Heever
+ *           - Adriatic Power 2018
+ * Date      - 11 June 2018
+ * Purpose   - This is a DC to DC UPS. 
+ *             Two batteries are monitored via voltage sensors. 
+ *             The battery voltages are monitored and once 'battery cut off' 
+ *             is reached - the relay will cut off the supply to the load.
+ *             
+ * Version 1 - setting up the sensor and LCD            
+ * Version 2 - adding the relay control
+ * Version 3 - add the second battery sensor and 
+ *             final version for now ... 14 June 2018
+ * 
+ */
+ 
+#include <LiquidCrystal.h>
+
+
+float R1 = 30000;                                           // value of R1 on the voltage divider
+float R2 = 7500;                                            // value of R2 on the voltage divider
+float cutOff = 21.0;                                        // Low battery Cutoff voltage
+float voltageTot = 22.0;                                    // set total voltage at 24V
+int relaypin = 8;                                           // Plug the signal pin of the relay into pin 8
+
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+
+void setup() {
+  Serial.begin(9600);                                        // set serial port to 9600 baud rate.
+  lcd.begin(16, 2);
+  pinMode(relaypin, OUTPUT);                                 // set the pin as an output pin for the relay
+  /*
+   * Do a intro message on the screen
+   */
+  lcd.setCursor(1,0);                                        // Display name and copyright
+  lcd.print("Adriatic Power");  
+  lcd.setCursor(1,1);
+  lcd.print("Copyright 2018");
+  delay(2000);
+  digitalWrite(relaypin, LOW);                               // initalize relay and set to off. 
+  /*
+   * Set up the 'base' message on the lcd.
+   * The voltages will fluctuate but this
+   * information will be static.
+   */
+  lcd.clear();
+  lcd.print("Battery 1 ");
+  lcd.setCursor(15,0);
+  lcd.print("v");
+  lcd.setCursor(0,1);
+  lcd.print("Battery 2 ");
+  lcd.setCursor(15,1);
+  lcd.print("v");
+}
+
+void loop() {
+  int sensorValue1 = analogRead(A0);                          // read the analogue input Battery 1 on A0
+  int sensorValue2 = analogRead(A1);                          // read the analogue input Battery 2 on A1
+    
+  float voltage1 = (5.0*sensorValue1*(R1+R2))/(1023.0*R2);    // Convert the analog to Digital converter value to voltage
+  float voltage2 = (5.0*sensorValue2*(R1+R2))/(1023.0*R2);    // Convert the analog to Digital converter value to voltage
+  Serial.print("Battery 1 ");                                 // print value to serial monitor.
+  Serial.println(voltage1);
+  Serial.print("Battery 2 ");
+  Serial.println(voltage2);
+  lcd.setCursor(10,0);
+  lcd.print(voltage1);
+  lcd.setCursor(10,1);
+  lcd.print(voltage2);
+
+  delay(2000);                                                 // delay between cycles of monitoring - this can be lowered
+                                                               // or lengthened if needed 
+                                                                    
+  /*
+   * Work out the total voltage then compare it to the 
+   * low voltage cut off.  
+   * If there is enough battery voltage all is good
+   * If the battery is low - cut off the supply to the machine. 
+   */
+  voltageTot = voltage1 + voltage2;
+  if (voltageTot > cutOff) {
+    digitalWrite(relaypin, HIGH);
+  }
+  else {
+    digitalWrite(relaypin, LOW);
+  }
+
+//  lcd.clear();                                              // commented out for now - it seems to keep the lcd OK without clearing it every cycle. 
+
+}
